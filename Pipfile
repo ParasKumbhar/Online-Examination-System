@@ -9,6 +9,7 @@ bcrypt = "*"
 pillow = "*"
 validate-email = "*"
 djangorestframework = "*"
+python-dotenv = "*"
 
 [dev-packages]
 
