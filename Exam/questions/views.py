@@ -291,6 +291,12 @@ def view_exams_student(request):
             list_of_completed.append(exam)
             continue
 
+        # Allow students to start the exam only during the scheduled window
+        exam.can_appear = False
+        if exam.start_time and now >= exam.start_time:
+            if not exam.end_time or now <= exam.end_time:
+                exam.can_appear = True
+
         if stu_exam and stu_exam.completed == 1:
             list_of_completed.append(exam)
         else:
@@ -298,7 +304,8 @@ def view_exams_student(request):
 
     return render(request,'exam/mainexamstudent.html',{
         'exams':list_un,
-        'completed':list_of_completed
+        'completed':list_of_completed,
+        'now': now,
     })
 
 @login_required(login_url='login')

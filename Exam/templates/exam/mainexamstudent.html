@@ -26,11 +26,19 @@
                     Paper: {{ exam.question_paper.qPaperTitle }}
                 </div>
 
+                {% if exam.can_appear %}
                 <a href="{% url 'appear-exam' exam.id %}" 
                    onclick="window.open(this.href, '_blank', 'width=800,height=800'); return false;"
                    class="block w-full py-2.5 px-4 bg-primary hover:bg-indigo-700 text-white font-medium rounded-lg text-center transition-colors shadow-sm">
                     Appear for Exam
                 </a>
+                {% else %}
+                <button type="button"
+                   class="block w-full py-2.5 px-4 bg-slate-300 text-slate-700 font-medium rounded-lg text-center cursor-not-allowed"
+                   disabled>
+                    Coming Soon
+                </button>
+                {% endif %}
             </div>
         </div>
         {% endfor %}
