@@ -23,4 +23,17 @@ urlpatterns = [
     # Question endpoints
     path('v1/questions/', views.questions_list, name='questions-list'),
     path('v1/questions/create/', views.questions_create, name='questions-create'),
+
+    # Anti-Cheating endpoints
+    path('v1/exams/<int:exam_id>/focus-loss/', views.record_focus_loss, name='record-focus-loss'),
+    path('v1/exams/<int:exam_id>/focus-status/', views.get_focus_status, name='focus-status'),
+    path('v1/exams/<int:exam_id>/validate-timestamp/', views.validate_submission_timestamp, name='validate-timestamp'),
+
+    # Exam Assignment endpoints
+    path('v1/exams/<int:exam_id>/assignments/', views.manage_exam_assignments, name='manage-assignments'),
+
+    # Question search and management
+    path('v1/questions/search/', views.search_questions, name='search-questions'),
+    path('v1/questions/export-csv/', views.export_questions_csv, name='export-csv'),
+    path('v1/questions/import-csv/', views.import_questions_csv, name='import-csv'),
 ]

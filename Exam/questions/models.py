@@ -19,6 +19,7 @@ class Exam_Model(models.Model):
     question_paper = models.ForeignKey(Question_Paper, on_delete=models.CASCADE, related_name='exams')
     start_time = models.DateTimeField(default=_now_rounded_to_minute)
     end_time = models.DateTimeField(default=_now_rounded_to_minute)
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.name
@@ -51,7 +52,7 @@ class ExamForm(ModelForm):
     class Meta:
         model = Exam_Model
         fields = '__all__'
-        exclude = ['professor', 'total_marks']
+        exclude = ['professor', 'total_marks', 'is_active']
         labels = {
             'name': 'Exam Name',
             'question_paper': 'Question Paper',

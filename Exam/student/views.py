@@ -20,9 +20,10 @@ from student.models import StuExam_DB, StuResults_DB
 @login_required(login_url='login')
 def index(request):
     from questions.models import Exam_Model
+    from questions.exam_assignment_models import ExamAssignment
     from django.utils import timezone
     from django.db.models import Avg, Sum
-    
+
     student = request.user
     now = timezone.localtime()
 
@@ -33,12 +34,19 @@ def index(request):
         if timezone.is_naive(dt):
             dt = timezone.make_aware(dt, timezone.get_default_timezone())
         return timezone.localtime(dt)
-    # Get ALL exams - students should see all exams created by faculty
-    all_exams = Exam_Model.objects.all().order_by('start_time')
-    
+
+    # Get ALL active exams - filter by assignments
+    all_exams = Exam_Model.objects.filter(is_active=True).order_by('start_time')
+
+    # Filter exams that student has access to
+    accessible_exams = []
+    for exam in all_exams:
+        if ExamAssignment.is_exam_assigned_to_student(exam, student):
+            accessible_exams.append(exam)
+
     # Filter out exams that the student has already completed
     upcoming_exams = []
-    for exam in all_exams:
+    for exam in accessible_exams:
         stu_exam_record = StuExam_DB.objects.filter(
             student=student,
             examname=exam.name,

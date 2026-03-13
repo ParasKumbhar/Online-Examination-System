@@ -21,14 +21,22 @@ def index(request):
     from student.models import StudentInfo
     from django.utils import timezone
 
-    # Get real data for the dashboard
-    total_exams = Exam_Model.objects.filter(professor=request.user).count()
+    # Get real data for the dashboard (only active exams)
+    total_exams = Exam_Model.objects.filter(professor=request.user, is_active=True).count()
     total_students = StudentInfo.objects.count()
-    completed_exams = Exam_Model.objects.filter(professor=request.user, end_time__lt=timezone.now()).count()
-    upcoming_exams = Exam_Model.objects.filter(professor=request.user, start_time__gt=timezone.now()).count()
+    completed_exams = Exam_Model.objects.filter(
+        professor=request.user,
+        is_active=True,
+        end_time__lt=timezone.now()
+    ).count()
+    upcoming_exams = Exam_Model.objects.filter(
+        professor=request.user,
+        is_active=True,
+        start_time__gt=timezone.now()
+    ).count()
 
     # Get recent exams (last 5)
-    recent_exams = Exam_Model.objects.filter(professor=request.user).order_by('-start_time')[:5]
+    recent_exams = Exam_Model.objects.filter(professor=request.user, is_active=True).order_by('-start_time')[:5]
 
     context = {
         'total_exams': total_exams,

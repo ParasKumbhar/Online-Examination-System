@@ -165,14 +165,32 @@
         return {
             timeRemaining: getInitialTime(),
             timer: null,
+            warningsShown: {
+                5: false,
+                2: false,
+                1: false
+            },
             init: function() {
                 var self = this;
-                
+
                 // Auto-save every 30 seconds
                 this.timer = setInterval(function() {
                     if (self.timeRemaining > 0) {
                         self.timeRemaining--;
-                        
+
+                        // Show timer warnings at 5 min, 2 min, 1 min
+                        var minutes = Math.floor(self.timeRemaining / 60);
+                        if (minutes === 5 && !self.warningsShown[5]) {
+                            self.warningsShown[5] = true;
+                            showTimerWarning('5 minutes remaining!');
+                        } else if (minutes === 2 && !self.warningsShown[2]) {
+                            self.warningsShown[2] = true;
+                            showTimerWarning('2 minutes remaining! Please prepare to submit.');
+                        } else if (minutes === 1 && !self.warningsShown[1]) {
+                            self.warningsShown[1] = true;
+                            showTimerWarning('1 minute remaining! Prepare to submit immediately.');
+                        }
+
                         // Save every 30 seconds
                         if (self.timeRemaining % 30 === 0) {
                             var answers = getAllAnswers();
@@ -186,7 +204,7 @@
                         document.querySelector('form').dispatchEvent(new Event('submit', {cancelable: true}));
                     }
                 }, 1000);
-                
+
                 // Save on page unload
                 window.addEventListener('beforeunload', function() {
                     var answers = getAllAnswers();
@@ -199,6 +217,17 @@
                 return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
             }
         }
+    }
+
+    function showTimerWarning(message) {
+        var warning = document.createElement('div');
+        warning.className = 'fixed top-20 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse';
+        warning.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> ' + message;
+        document.body.appendChild(warning);
+
+        setTimeout(function() {
+            warning.remove();
+        }, 5000);
     }
 </script>
 
@@ -241,4 +270,105 @@
         });
     })();
 </script>
+
+<!-- ANTI-CHEATING: Focus Loss Detection -->
+<script>
+    var focusLossCount = 0;
+    var maxFocusLosses = 3;
+    var examId = "{{ exam.id }}";
+    var focusDetectionEnabled = true;
+
+    // Log focus loss events to server
+    function recordFocusLossToServer(eventType) {
+        if (!focusDetectionEnabled) return;
+
+        fetch('/api/v1/exams/' + examId + '/focus-loss/', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                event_type: eventType,
+                browser_timestamp: new Date().toISOString()
+            })
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.exceeded) {
+                focusDetectionEnabled = false;  // Prevent further logging
+                alert('⚠️ CRITICAL: Maximum focus losses exceeded! Your exam will be submitted automatically.');
+                // Submit form immediately
+                setTimeout(function() {
+                    document.querySelector('form').dispatchEvent(new Event('submit', {cancelable: true}));
+                }, 1000);
+            } else if (data.warning) {
+                showFocusWarning(data.warning + ' (' + data.focus_loss_count + '/' + data.max_allowed + ')');
+            }
+            console.log('Focus loss recorded:', data);
+        })
+        .catch(function(error) {
+            console.error('Error recording focus loss:', error);
+        });
+    }
+
+    // Show warning message for focus loss
+    function showFocusWarning(message) {
+        var warning = document.createElement('div');
+        warning.className = 'fixed top-40 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 animate-bounce';
+        warning.innerHTML = '<i class="fa-solid fa-exclamation-circle"></i> ' + message;
+        document.body.appendChild(warning);
+
+        setTimeout(function() {
+            warning.remove();
+        }, 4000);
+    }
+
+    // Detect tab/window visibility changes
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            console.log('Page hidden - tab switched away');
+            recordFocusLossToServer('VISIBILITY');
+        }
+    });
+
+    // Detect window focus loss
+    window.addEventListener('blur', function() {
+        console.log('Window lost focus');
+        recordFocusLossToServer('WINDOW_BLUR');
+    });
+
+    // Optional: Track if user clicks outside the browser window
+    window.addEventListener('focus', function() {
+        console.log('Window regained focus');
+    });
+
+    // Prevent common cheating methods
+    document.addEventListener('keydown', function(e) {
+        // Prevent Alt+Tab in some cases (limited effect)
+        if (e.altKey && e.keyCode === 9) {
+            console.log('Alt+Tab detected - focus loss will be logged by visibility API');
+        }
+    });
+
+    // Load current focus status on page load
+    window.addEventListener('load', function() {
+        fetch('/api/v1/exams/' + examId + '/focus-status/', {
+            credentials: 'same-origin'
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            console.log('Current focus status:', data);
+            if (data.exceeded) {
+                showFocusWarning('⚠️ You have already exceeded the maximum focus losses limit!');
+                focusDetectionEnabled = false;
+            }
+        })
+        .catch(function(error) {
+            console.error('Error loading focus status:', error);
+        });
+    });
+</script>
+
 {% endblock %}

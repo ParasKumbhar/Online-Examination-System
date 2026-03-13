@@ -68,7 +68,7 @@
             <a href="{% if user.is_authenticated %}{% if user|in_group:'Professor' %}{% url 'faculty-index' %}{% else %}{% url 'index' %}{% endif %}{% else %}{% url 'homepage' %}{% endif %}"
                class="flex items-center gap-2 text-2xl font-bold text-primary">
                 <i class="fa-solid fa-graduation-cap"></i>
-                <span>ExamPro</span>
+Exam
             </a>
         </div>
 

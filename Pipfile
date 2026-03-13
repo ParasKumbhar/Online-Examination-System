@@ -10,6 +10,7 @@ pillow = "*"
 validate-email = "*"
 djangorestframework = "*"
 python-dotenv = "*"
+apscheduler = "*"
 
 [dev-packages]
 

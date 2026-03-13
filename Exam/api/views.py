@@ -59,24 +59,29 @@ class IsAdmin(permissions.BasePermission):
 def exam_list_create(request):
     """
     List exams or create new exam.
-    GET: List exams available to user
+    GET: List exams available to user (respects exam assignments)
     POST: Create new exam (Faculty only)
     """
-    
+
     if request.method == 'GET':
+        from questions.exam_assignment_models import ExamAssignment
+
         # Cache key for user's exams
         cache_key = f'exams_list_{request.user.id}'
         exams = cache.get(cache_key)
-        
+
         if not exams:
             if request.user.groups.filter(name='Professor').exists():
+                # Professors see their own exams
                 exams = Exam_Model.objects.filter(professor=request.user)
             else:
-                exams = Exam_Model.objects.all()
-            
+                # Students see only assigned exams
+                all_exams = Exam_Model.objects.all()
+                exams = [exam for exam in all_exams if ExamAssignment.is_exam_assigned_to_student(exam, request.user)]
+
             # Cache for 5 minutes
             cache.set(cache_key, exams, 300)
-        
+
         serializer = ExamSerializer(exams, many=True)
         return Response(serializer.data)
     
@@ -140,8 +145,12 @@ def exam_detail(request, exam_id):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     elif request.method == 'DELETE':
-        exam.delete()
-        logger.info(f'Exam deleted: {exam.name}')
+        from student.models import StuExam_DB
+        StuExam_DB.objects.filter(examname=exam.name, qpaper=exam.question_paper).delete()
+        exam.is_active = False
+        exam.save()
+        logger.info(f'Exam deactivated and student records reset: {exam.name}')
+        cache.delete(f'exams_list_{request.user.id}')
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -430,5 +439,409 @@ def questions_create(request):
         cache.delete(f'faculty_questions_{request.user.id}')
         
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
+
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ==================== ANTI-CHEATING ENDPOINTS ====================
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated, IsStudent])
+def record_focus_loss(request, exam_id):
+    """
+    Record a focus loss event (tab switch, window blur, etc.)
+
+    Request body:
+    {
+        "event_type": "TAB_SWITCH" | "WINDOW_BLUR" | "VISIBILITY",
+        "browser_timestamp": "2026-03-10T10:30:45.123Z"
+    }
+    """
+
+    try:
+        from questions.anticheating_models import ExamFocusLog, FocusLossEvent
+
+        exam = Exam_Model.objects.get(id=exam_id)
+
+        # Check if exam is still active
+        now = datetime.now()
+        if now > exam.end_time:
+            return Response(
+                {'error': 'Exam has ended', 'action': 'submit_immediately'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get or create focus log
+        focus_log, created = ExamFocusLog.objects.get_or_create(
+            student=request.user,
+            exam=exam
+        )
+
+        # Record the event
+        event_type = request.data.get('event_type', 'TAB_SWITCH')
+        browser_timestamp = request.data.get('browser_timestamp')
+
+        FocusLossEvent.objects.create(
+            student=request.user,
+            exam=exam,
+            event_type=event_type,
+            browser_timestamp=browser_timestamp,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', '')
+        )
+
+        # Update focus loss count
+        focus_log.record_focus_loss()
+
+        response_data = {
+            'success': True,
+            'focus_loss_count': focus_log.focus_loss_count,
+            'max_allowed': focus_log.max_focus_losses,
+            'exceeded': focus_log.exceeded_max_losses()
+        }
+
+        if focus_log.exceeded_max_losses():
+            response_data['warning'] = 'Maximum focus losses exceeded! Your exam will be submitted automatically.'
+            response_data['action'] = 'submit_immediately'
+        elif focus_log.focus_loss_count >= focus_log.max_focus_losses:
+            response_data['warning'] = f'Warning: You have reached the maximum number of allowed focus losses ({focus_log.max_focus_losses}). One more loss and your exam will be submitted.'
+
+        logger.warning(
+            f'Focus loss recorded: {request.user.username} in exam {exam.name} '
+            f'(count: {focus_log.focus_loss_count}, type: {event_type})'
+        )
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
+    except Exam_Model.DoesNotExist:
+        return Response({'error': 'Exam not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f'Error recording focus loss: {str(e)}')
+        return Response({'error': 'Failed to record focus loss'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated, IsStudent])
+def get_focus_status(request, exam_id):
+    """
+    Get current focus loss status for student during exam
+    """
+
+    try:
+        from questions.anticheating_models import ExamFocusLog
+
+        exam = Exam_Model.objects.get(id=exam_id)
+
+        focus_log = ExamFocusLog.objects.filter(
+            student=request.user,
+            exam=exam
+        ).first()
+
+        if not focus_log:
+            return Response({
+                'focus_loss_count': 0,
+                'max_allowed': 3,
+                'exceeded': False
+            })
+
+        return Response({
+            'focus_loss_count': focus_log.focus_loss_count,
+            'max_allowed': focus_log.max_focus_losses,
+            'exceeded': focus_log.exceeded_max_losses(),
+            'reason': focus_log.reason if focus_log.is_suspicious else None
+        })
+
+    except Exam_Model.DoesNotExist:
+        return Response({'error': 'Exam not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f'Error getting focus status: {str(e)}')
+        return Response({'error': 'Failed to get focus status'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated, IsStudent])
+def validate_submission_timestamp(request, exam_id):
+    """
+    Validate that submission timestamp is legitimate (prevents timer manipulation)
+
+    Request body:
+    {
+        "submission_time_client": "2026-03-10T10:35:45.123Z"
+    }
+    """
+
+    try:
+        from questions.anticheating_models import ServerTimestampValidator
+
+        exam = Exam_Model.objects.get(id=exam_id)
+        submission_time = request.data.get('submission_time_client')
+
+        if not submission_time:
+            return Response(
+                {'error': 'submission_time_client is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        is_valid, message = ServerTimestampValidator.validate_submission_time(
+            request.user,
+            exam,
+            submission_time
+        )
+
+        return Response({
+            'valid': is_valid,
+            'message': message
+        }, status=status.HTTP_200_OK if is_valid else status.HTTP_400_BAD_REQUEST)
+
+    except Exam_Model.DoesNotExist:
+        return Response({'error': 'Exam not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f'Error validating timestamp: {str(e)}')
+        return Response({'error': 'Validation error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+def get_client_ip(request):
+    """Get client IP address from request"""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
+
+# ==================== EXAM ASSIGNMENT ENDPOINTS ====================
+
+@api_view(['GET', 'POST', 'DELETE'])
+@permission_classes([permissions.IsAuthenticated, IsFaculty])
+def manage_exam_assignments(request, exam_id):
+    """
+    Manage exam assignments for a specific exam.
+    GET: List all assignments for exam
+    POST: Create new assignment
+    DELETE: Remove assignment
+    """
+
+    try:
+        from questions.exam_assignment_models import ExamAssignment
+
+        exam = Exam_Model.objects.get(id=exam_id, professor=request.user)
+
+        if request.method == 'GET':
+            assignments = ExamAssignment.objects.filter(exam=exam, is_active=True)
+            data = []
+            for assignment in assignments:
+                data.append({
+                    'id': assignment.id,
+                    'exam': assignment.exam.name,
+                    'type': assignment.assignment_type,
+                    'student': assignment.student.username if assignment.student else None,
+                    'batch': assignment.batch_name,
+                    'created_at': assignment.created_at.isoformat()
+                })
+            return Response(data)
+
+        elif request.method == 'POST':
+            assignment_type = request.data.get('assignment_type', 'public')
+            student_id = request.data.get('student_id')
+            batch_name = request.data.get('batch_name')
+
+            if assignment_type == 'individual' and not student_id:
+                return Response(
+                    {'error': 'student_id is required for individual assignments'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if assignment_type == 'batch' and not batch_name:
+                return Response(
+                    {'error': 'batch_name is required for batch assignments'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            try:
+                student = User.objects.get(id=student_id) if student_id else None
+            except User.DoesNotExist:
+                return Response(
+                    {'error': 'Student not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            assignment = ExamAssignment.objects.create(
+                exam=exam,
+                assignment_type=assignment_type,
+                student=student,
+                batch_name=batch_name or ''
+            )
+
+            logger.info(f"Exam assignment created: {exam.name} - {assignment_type}")
+
+            return Response({
+                'id': assignment.id,
+                'message': f'Assignment created successfully ({assignment_type})'
+            }, status=status.HTTP_201_CREATED)
+
+        elif request.method == 'DELETE':
+            assignment_id = request.data.get('assignment_id')
+            if not assignment_id:
+                return Response(
+                    {'error': 'assignment_id is required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            try:
+                assignment = ExamAssignment.objects.get(id=assignment_id, exam=exam)
+                assignment.deactivate()
+                logger.info(f"Exam assignment deactivated: {exam.name}")
+                return Response({'message': 'Assignment deactivated successfully'})
+            except ExamAssignment.DoesNotExist:
+                return Response(
+                    {'error': 'Assignment not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+    except Exam_Model.DoesNotExist:
+        return Response(
+            {'error': 'Exam not found or access denied'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        logger.error(f'Error managing exam assignments: {str(e)}')
+        return Response(
+            {'error': 'Failed to manage assignments'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+# ==================== QUESTION SEARCH & MANAGEMENT ====================
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated, IsFaculty])
+def search_questions(request):
+    """
+    Search questions by text, difficulty, or other criteria.
+
+    Query parameters:
+    - q: Search text (searches in question text and options)
+    - difficulty: Filter by difficulty (easy, medium, hard)
+    - min_marks: Minimum marks
+    - max_marks: Maximum marks
+    """
+
+    try:
+        from django.db.models import Q
+
+        search_query = request.query_params.get('q', '')
+        difficulty = request.query_params.get('difficulty', '')
+        min_marks = request.query_params.get('min_marks')
+        max_marks = request.query_params.get('max_marks')
+
+        # Base query: only professor's questions
+        questions = Question_DB.objects.filter(professor=request.user)
+
+        # Text search
+        if search_query:
+            questions = questions.filter(
+                Q(question__icontains=search_query) |
+                Q(optionA__icontains=search_query) |
+                Q(optionB__icontains=search_query) |
+                Q(optionC__icontains=search_query) |
+                Q(optionD__icontains=search_query)
+            )
+
+        # Difficulty filter
+        if difficulty in ['easy', 'medium', 'hard']:
+            questions = questions.filter(difficulty=difficulty)
+
+        # Marks filter
+        if min_marks:
+            try:
+                questions = questions.filter(max_marks__gte=int(min_marks))
+            except ValueError:
+                pass
+
+        if max_marks:
+            try:
+                questions = questions.filter(max_marks__lte=int(max_marks))
+            except ValueError:
+                pass
+
+        serializer = QuestionSerializer(questions, many=True)
+        return Response({
+            'count': questions.count(),
+            'results': serializer.data
+        })
+
+    except Exception as e:
+        logger.error(f'Error searching questions: {str(e)}')
+        return Response({'error': 'Search failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated, IsFaculty])
+def export_questions_csv(request):
+    """
+    Export all professor's questions to CSV file.
+
+    Returns: CSV file download
+    """
+
+    try:
+        from questions.enhanced_question_models import QuestionCSVImporter
+        from django.http import HttpResponse
+
+        success, result = QuestionCSVImporter.export_to_csv(request.user)
+
+        if not success:
+            return Response({'error': 'Export failed: ' + result}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Return CSV file
+        with open(result, 'rb') as csv_file:
+            response = HttpResponse(csv_file.read(), content_type='text/csv')
+            response['Content-Disposition'] = f'attachment; filename="{result}"'
+            return response
+
+    except Exception as e:
+        logger.error(f'Error exporting questions: {str(e)}')
+        return Response({'error': 'Export failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated, IsFaculty])
+def import_questions_csv(request):
+    """
+    Import questions from CSV upload.
+
+    CSV format:
+    Question Text,Option A,Option B,Option C,Option D,Correct Answer,Max Marks,Difficulty
+
+    Example:
+    What is 2+2?,3,4,5,6,B,1,easy
+    """
+
+    try:
+        from questions.enhanced_question_models import QuestionCSVImporter
+        import io
+
+        if 'file' not in request.FILES:
+            return Response({'error': 'CSV file is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        csv_file = request.FILES['file']
+
+        # Validate file is CSV
+        if not csv_file.name.endswith('.csv'):
+            return Response({'error': 'File must be a CSV file'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Read CSV
+        csv_data = io.TextIOWrapper(csv_file.file, encoding='utf-8')
+        imported_count, errors = QuestionCSVImporter.import_from_csv(request.user, csv_data)
+
+        return Response({
+            'imported': imported_count,
+            'errors': errors,
+            'error_count': len(errors),
+            'success': len(errors) == 0
+        })
+
+    except Exception as e:
+        logger.error(f'Error importing questions: {str(e)}')
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

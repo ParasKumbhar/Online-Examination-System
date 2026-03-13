@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Online Examination System - ExamPro</title>
+    <title>Online Examination System - Exam</title>
 
     <!-- Google Font: Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -41,7 +41,7 @@
                     <a href="{% if user.is_authenticated %}{% if user|in_group:'Professor' %}{% url 'faculty-index' %}{% else %}{% url 'index' %}{% endif %}{% else %}{% url 'homepage' %}{% endif %}"
                        class="flex items-center gap-2 text-2xl font-bold text-primary">
                         <i class="fa-solid fa-graduation-cap"></i>
-                        <span>ExamPro</span>
+                        <span>Exam</span>
                     </a>
                 </div>
                 <div class="flex items-center gap-4">
@@ -80,7 +80,7 @@
     <div class="py-20 bg-slate-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16">
-                <h2 class="text-3xl font-bold text-slate-900 mb-4">Why Choose ExamPro?</h2>
+                <h2 class="text-3xl font-bold text-slate-900 mb-4">Why Choose Exam?</h2>
                 <p class="text-slate-500 max-w-2xl mx-auto">Our platform offers a comprehensive suite of tools designed to make online testing efficient and secure.</p>
             </div>
 
@@ -125,7 +125,7 @@
     <footer class="bg-white border-t border-slate-200 py-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <p class="text-slate-500">
-                &copy; {% now "Y" %} ExamPro. All rights reserved.
+                &copy; {% now "Y" %} Exam. All rights reserved.
             </p>
         </div>
     </footer>

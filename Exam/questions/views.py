@@ -52,7 +52,7 @@ def view_exams_prof(request):
     if prof:
         permissions = has_group(prof,"Professor")
     if permissions:
-        exams = Exam_Model.objects.filter(professor=prof)
+        exams = Exam_Model.objects.filter(professor=prof, is_active=True)
         return render(request, 'exam/mainexam.html', {
             'exams': exams, 'prof': prof,
         })
@@ -112,14 +112,14 @@ def add_questions(request):
 def view_previousexams_prof(request):
     prof = request.user
     student = 0
-    exams = Exam_Model.objects.filter(professor=prof)
+    exams = Exam_Model.objects.filter(professor=prof, is_active=True)
     return render(request, 'exam/previousexam.html', {
         'exams': exams,'prof': prof
     })
 
 @login_required(login_url='login')
 def student_view_previous(request):
-    exams = Exam_Model.objects.all()
+    exams = Exam_Model.objects.filter(is_active=True)
     list_of_completed = []
     list_un = []
     for exam in exams:
@@ -154,7 +154,7 @@ def view_students_prof(request):
     student_completed = []
     count = 0
     dicts = {}
-    examn = Exam_Model.objects.filter(professor=request.user)
+    examn = Exam_Model.objects.filter(professor=request.user, is_active=True)
     for student in students:
         student_name.append(student.username)
         count = 0
@@ -180,8 +180,8 @@ def view_results_prof(request):
     """
     prof = request.user
     
-    # Get all exams created by this professor
-    professor_exams = Exam_Model.objects.filter(professor=prof)
+    # Get all active exams created by this professor
+    professor_exams = Exam_Model.objects.filter(professor=prof, is_active=True)
     
     # Get all students who took any of professor's exams
     student_results = {}
@@ -245,8 +245,8 @@ def view_results_prof(request):
 
 @login_required(login_url='login')
 def view_exams_student(request):
-    # Get ALL exams - students should see all exams created by faculty
-    exams = Exam_Model.objects.all().order_by('start_time')
+    # Get ALL active exams - students should see all active exams created by faculty
+    exams = Exam_Model.objects.filter(is_active=True).order_by('start_time')
     list_of_completed = []
     list_un = []
     now = timezone.localtime()
@@ -317,7 +317,7 @@ def view_exams_student(request):
 
 @login_required(login_url='login')
 def view_students_attendance(request):
-    exams = Exam_Model.objects.all()
+    exams = Exam_Model.objects.filter(is_active=True)
     list_of_completed = []
     list_un = []
     for exam in exams:
@@ -737,7 +737,10 @@ def delete_exam(request, id):
         return HttpResponseForbidden("You don't have permission to delete this exam.")
 
     if request.method == 'POST':
-        exam.delete()
+        from student.models import StuExam_DB
+        StuExam_DB.objects.filter(examname=exam.name, qpaper=exam.question_paper).delete()
+        exam.is_active = False
+        exam.save()
         return redirect('view_exams')
 
     return render(request, 'exam/delete_exam.html', {'exam': exam})
