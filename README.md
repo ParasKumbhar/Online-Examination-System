@@ -323,27 +323,75 @@ Log in with your superuser credentials.
 3. Click **Add Group** button
 4. Create **Group 1**:
    - **Name**: Professor
+   - **Keywords to Search for Permission**:
+     - `Contenttypes`
+     - `Faculty`
+     - `Questions`
    - **Permissions**: 
-     - `Contenttypes | content type | Can add content type`
-     - `Faculty | faculty | Can add faculty`
-     - `Faculty | faculty | Can change faculty`
-     - `Faculty | faculty | Can delete faculty`
-     - `Faculty | faculty | Can view faculty`
-     - `Questions | question | Can add question`
-     - `Questions | question | Can change question`
-     - `Questions | question | Can delete question`
-     - `Questions | question | Can view question`
+     - `contenttypes | content type | Can add content type`
+     - `contenttypes | content type | Can change content type`
+     - `contenttypes | content type | Can delete content type`
+     - `contenttypes | content type | Can view content type`
+     - `faculty | faculty info | Can add faculty info`
+     - `faculty | faculty info | Can change faculty info`
+     - `faculty |faculty info | Can delete faculty info`
+     - `faculty |faculty info | Can view faculty info`
+     - `questions | exam_model | Can add exam_model`
+     - `questions | exam_model | Can change exam_model`
+     - `questions |exam_model | Can delete exam_model`
+     - `questions |exam_model | Can view exam_model`
+     - `questions | question_db | Can add question_db`
+     - `questions | question_db | Can change question_db`
+     - `questions | question_db | Can delete question_db`
+     - `questions | question_db | Can view question_db`
+     - `questions | question paper | Can add question paper`
+     - `questions | question_paper | Can change question_paper`
+     - `questions | question paper | Can delete question_paper`
+     - `questions | question_paper | Can view question paper`
+     - `questions | question category | Can add question category`
+     - `questions | question category | Can change question category`
+     - `questions | question category | Can delete question category`
+     - `questions | question category | Can view question category`
+     - `questions | question statistics | Can add question statistics`
+     - `questions | question statistics | Can change question statistics`
+     - `questions | question statistics | Can delete question statistics`
+     - `questions | question statistics | Can view question statistics`
+     - `questions | question tag | Can add question tag`
+     - `questions | question tag | Can change question tag`
+     - `questions | question tag | Can delete question tag`
+     - `questions | question tag | Can view question tag`
+     - `questions | question version | Can add question version`
+     - `questions | question version | Can change question version`
+     - `questions | question version | Can delete question version`
+     - `questions | question version | Can view question version`
    - Click **Save**
 
 5. Create **Group 2**:
    - **Name**: Students
+   - **Keywords to Search for Permission**:
+     - `Student (It Should Start with Student)`
+     - `Studentpreferences`
    - **Permissions**:
-     - `Student | student | Can add student`
-     - `Student | student | Can change student`
-     - `Student | student | Can view student`
-     - `Studentpreferences | studentpreference | Can add studentpreference`
-     - `Studentpreferences | studentpreference | Can change studentpreference`
-     - `Studentpreferences | studentpreference | Can view studentpreference`
+     - `student | stu_question | Can add stu_question`
+     - `student | stu_question | Can change stu_question`
+     - `student | stu_question | Can delete stu_ question`
+     - `student | stu_question | Can view stu_ question`
+     - `student | student info | Can add student info`
+     - `student | student info | Can change student info`
+     - `student | student info | Can delete student info`
+     - `student | student info | Can view student info`
+     - `student | stu exam_db | Can add stu exam_db`
+     - `student | stu exam_db | Can change stu exam_db`
+     - `student | stu exam_db | Can delete stu exam_db`
+     - `student | stu exam_db | Can view stu exam_db`
+     - `student | stu results_db | Can add stu results_db`
+     - `student | stu results_db | Can change stu results_db`
+     - `student | stu results_db | Can delete stu results_db`
+     - `student | stu results_db | Can view stu results_db`
+     - `studentPreferences | student preference model | Can add student preference model`
+     - `studentPreferences | student preference model | Can change student preference model`
+     - `studentPreferences | student preference model | Can delete student preference model`
+     - `studentPreferences | student preference model | Can view student preference model`
    - Click **Save**
 
 ---
