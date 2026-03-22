@@ -2,6 +2,47 @@
 {% block title %}Add Questions{% endblock %}
 
 {% block content %}
+<style>
+    .upload-field {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        width: 100%;
+        max-width: 640px;
+    }
+    .upload-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.8rem;
+        height: 1.8rem;
+        min-width: 1.8rem;
+        color: #1e3a8a;
+        background: #e0e7ff;
+        border-radius: 0.5rem;
+        border: 1px solid #4f46e5;
+        box-shadow: 0 2px 12px rgba(99,102,241,.35);
+        font-weight: 700;
+        transition: transform .2s ease, background .2s ease;
+    }
+    .upload-icon:hover {
+        background: #c7d2fe;
+        transform: scale(1.1);
+    }
+    .upload-icon svg {
+        width: 1rem;
+        height: 1rem;
+    }
+    .upload-field input,
+    .upload-field textarea {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+    .question-text, .option-input {
+        padding-right: 0.75rem !important;
+    }
+</style>
+
 <div class="max-w-3xl mx-auto space-y-6">
     <div>
         <h1 class="text-2xl font-bold text-slate-900">Add New Question</h1>
@@ -9,15 +50,30 @@
     </div>
 
     <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-        <form method="POST" action="{% url 'faculty-addquestions' %}" class="space-y-6">
+        <form method="POST" action="{% url 'faculty-addquestions' %}" enctype="multipart/form-data" class="space-y-6">
             {% csrf_token %}
+            {% if editing_question %}
+            <input type="hidden" name="qno" value="{{ editing_qno }}">
+            {% endif %}
 
             <!-- Question Text -->
             <div>
-                <label for="{{ examform.question.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">
-                    Question Text
-                </label>
-                {{ examform.question }}
+                <label for="{{ examform.question.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">Question Text</label>
+                <div class="upload-field">
+                    {{ examform.question }}
+                    <button type="button" class="upload-icon" data-target="{{ examform.question_image.id_for_label }}" aria-label="Upload question image">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 16v1a2 2 0 01-2 2H6a2 2 0 01-2-2V11a2 2 0 012-2h1.26a4.5 4.5 0 018.98 0H14a2 2 0 012 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 12v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 15l3-3 3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </button>
+                </div>
+                {{ examform.question_image }}
+                <input type="hidden" name="remove_question_image" id="remove_question_image" value="0">
+                {% if examform.instance.question_image %}
+                    <div class="mt-2 flex items-start gap-2">
+                        <img src="{{ examform.instance.question_image.url }}" alt="Question image" class="w-28 h-20 object-cover rounded border border-slate-300">
+                        <button type="button" class="text-xs text-red-500" data-remove="question_image">Remove</button>
+                    </div>
+                {% endif %}
+                <div id="preview_question_image" class="mt-2"></div>
                 {% if examform.question.errors %}
                     <div class="mt-1 text-sm text-red-500">{{ examform.question.errors|striptags }}</div>
                 {% endif %}
@@ -27,28 +83,84 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label for="{{ examform.optionA.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">Option A</label>
-                    {{ examform.optionA }}
+                    <div class="upload-field">
+                        {{ examform.optionA }}
+                        <button type="button" class="upload-icon" data-target="{{ examform.optionA_image.id_for_label }}" aria-label="Upload option A image">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        </button>
+                    </div>
+                    {{ examform.optionA_image }}
+                    <input type="hidden" name="remove_optionA_image" id="remove_optionA_image" value="0">
+                    {% if examform.instance.optionA_image %}
+                        <div class="mt-2 flex items-start gap-2">
+                            <img src="{{ examform.instance.optionA_image.url }}" alt="Option A image" class="w-24 h-16 object-cover rounded border border-slate-300">
+                            <button type="button" class="text-xs text-red-500" data-remove="optionA_image">Remove</button>
+                        </div>
+                    {% endif %}
+                    <div id="preview_optionA_image" class="mt-2"></div>
                     {% if examform.optionA.errors %}
                         <div class="mt-1 text-sm text-red-500">{{ examform.optionA.errors|striptags }}</div>
                     {% endif %}
                 </div>
                 <div>
                     <label for="{{ examform.optionB.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">Option B</label>
-                    {{ examform.optionB }}
+                    <div class="upload-field">
+                        {{ examform.optionB }}
+                        <button type="button" class="upload-icon" data-target="{{ examform.optionB_image.id_for_label }}" aria-label="Upload option B image">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        </button>
+                    </div>
+                    {{ examform.optionB_image }}
+                    <input type="hidden" name="remove_optionB_image" id="remove_optionB_image" value="0">
+                    {% if examform.instance.optionB_image %}
+                        <div class="mt-2 flex items-start gap-2">
+                            <img src="{{ examform.instance.optionB_image.url }}" alt="Option B image" class="w-24 h-16 object-cover rounded border border-slate-300">
+                            <button type="button" class="text-xs text-red-500" data-remove="optionB_image">Remove</button>
+                        </div>
+                    {% endif %}
+                    <div id="preview_optionB_image" class="mt-2"></div>
                     {% if examform.optionB.errors %}
                         <div class="mt-1 text-sm text-red-500">{{ examform.optionB.errors|striptags }}</div>
                     {% endif %}
                 </div>
                 <div>
                     <label for="{{ examform.optionC.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">Option C</label>
-                    {{ examform.optionC }}
+                    <div class="upload-field">
+                        {{ examform.optionC }}
+                        <button type="button" class="upload-icon" data-target="{{ examform.optionC_image.id_for_label }}" aria-label="Upload option C image">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        </button>
+                    </div>
+                    {{ examform.optionC_image }}
+                    <input type="hidden" name="remove_optionC_image" id="remove_optionC_image" value="0">
+                    {% if examform.instance.optionC_image %}
+                        <div class="mt-2 flex items-start gap-2">
+                            <img src="{{ examform.instance.optionC_image.url }}" alt="Option C image" class="w-24 h-16 object-cover rounded border border-slate-300">
+                            <button type="button" class="text-xs text-red-500" data-remove="optionC_image">Remove</button>
+                        </div>
+                    {% endif %}
+                    <div id="preview_optionC_image" class="mt-2"></div>
                     {% if examform.optionC.errors %}
                         <div class="mt-1 text-sm text-red-500">{{ examform.optionC.errors|striptags }}</div>
                     {% endif %}
                 </div>
                 <div>
                     <label for="{{ examform.optionD.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-1">Option D</label>
-                    {{ examform.optionD }}
+                    <div class="upload-field">
+                        {{ examform.optionD }}
+                        <button type="button" class="upload-icon" data-target="{{ examform.optionD_image.id_for_label }}" aria-label="Upload option D image">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        </button>
+                    </div>
+                    {{ examform.optionD_image }}
+                    <input type="hidden" name="remove_optionD_image" id="remove_optionD_image" value="0">
+                    {% if examform.instance.optionD_image %}
+                        <div class="mt-2 flex items-start gap-2">
+                            <img src="{{ examform.instance.optionD_image.url }}" alt="Option D image" class="w-24 h-16 object-cover rounded border border-slate-300">
+                            <button type="button" class="text-xs text-red-500" data-remove="optionD_image">Remove</button>
+                        </div>
+                    {% endif %}
+                    <div id="preview_optionD_image" class="mt-2"></div>
                     {% if examform.optionD.errors %}
                         <div class="mt-1 text-sm text-red-500">{{ examform.optionD.errors|striptags }}</div>
                     {% endif %}
@@ -82,4 +194,67 @@
         </form>
     </div>
 </div>
+
+<script>
+    // Upload icon triggers hidden file input
+    document.querySelectorAll('.upload-icon').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var targetInputId = this.dataset.target;
+            var fileInput = document.getElementById(targetInputId);
+            if (fileInput) {
+                fileInput.click();
+            }
+        });
+    });
+
+    // Preview file selection
+    function setupImagePreview(inputId, previewId, removeFieldId) {
+        var input = document.getElementById(inputId);
+        var preview = document.getElementById(previewId);
+        var removeField = document.getElementById(removeFieldId);
+
+        if (!input || !preview || !removeField) return;
+
+        input.addEventListener('change', function() {
+            if (!input.files || !input.files[0]) {
+                preview.innerHTML = '';
+                return;
+            }
+            removeField.value = '0';
+            var file = input.files[0];
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                preview.innerHTML = '<div class="flex items-start gap-2"><img class="w-28 h-20 object-cover rounded border border-slate-300" src="' + e.target.result + '" alt="Image preview" /><button type="button" class="text-xs text-red-500" data-remove-file="' + inputId + '">Remove</button></div>';
+
+                var removeButton = preview.querySelector('[data-remove-file]');
+                if (removeButton) {
+                    removeButton.addEventListener('click', function() {
+                        input.value = '';
+                        preview.innerHTML = '';
+                        removeField.value = '1';
+                    });
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    setupImagePreview('{{ examform.question_image.auto_id }}', 'preview_question_image', 'remove_question_image');
+    setupImagePreview('{{ examform.optionA_image.auto_id }}', 'preview_optionA_image', 'remove_optionA_image');
+    setupImagePreview('{{ examform.optionB_image.auto_id }}', 'preview_optionB_image', 'remove_optionB_image');
+    setupImagePreview('{{ examform.optionC_image.auto_id }}', 'preview_optionC_image', 'remove_optionC_image');
+    setupImagePreview('{{ examform.optionD_image.auto_id }}', 'preview_optionD_image', 'remove_optionD_image');
+
+    // Remove existing image button
+    document.querySelectorAll('[data-remove]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var fieldName = this.dataset.remove;
+            var input = document.getElementById('id_' + fieldName);
+            var removeInput = document.getElementById('remove_' + fieldName);
+            if (input) input.value = '';
+            if (removeInput) removeInput.value = '1';
+            this.closest('div').remove();
+        });
+    });
+</script>
 {% endblock %}

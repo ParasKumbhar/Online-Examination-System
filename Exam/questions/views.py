@@ -93,23 +93,44 @@ def add_questions(request):
     permissions = False
     if prof:
         permissions = has_group(prof,"Professor")
-    if permissions:
-        new_Form = QForm()
-        if request.method == 'POST' and permissions:
-            form = QForm(request.POST)
-            if form.is_valid():
-                exam = form.save(commit=False)
-                exam.professor = prof
-                exam.save()
-                form.save_m2m()
-                return redirect('faculty-addquestions')
-
-        exams = Exam_Model.objects.filter(professor=prof)
-        return render(request, 'exam/addquestions.html', {
-            'exams': exams, 'examform': new_Form, 'prof': prof,
-        })
-    else:
+    if not permissions:
         return redirect('view_exams_student')
+
+    question_id = request.GET.get('qno') or request.POST.get('qno')
+    instance = None
+    if question_id:
+        try:
+            instance = Question_DB.objects.get(qno=question_id, professor=prof)
+        except Question_DB.DoesNotExist:
+            instance = None
+
+    if request.method == 'POST':
+        form = QForm(request.POST, request.FILES, instance=instance)
+        if form.is_valid():
+            exam_obj = form.save(commit=False)
+            exam_obj.professor = prof
+
+            # Handle remove image flags
+            for field_key in ['question_image', 'optionA_image', 'optionB_image', 'optionC_image', 'optionD_image']:
+                if request.POST.get(f'remove_{field_key}') == '1':
+                    setattr(exam_obj, field_key, None)
+
+            exam_obj.save()
+            form.save_m2m()
+            from django.contrib import messages
+            messages.success(request, 'Question saved successfully!')
+            return redirect('faculty-addquestions')
+    else:
+        form = QForm(instance=instance)
+
+    exams = Exam_Model.objects.filter(professor=prof)
+    return render(request, 'exam/addquestions.html', {
+        'exams': exams,
+        'examform': form,
+        'prof': prof,
+        'editing_question': instance is not None,
+        'editing_qno': instance.qno if instance else ''
+    })
 
 @login_required(login_url='faculty-login')
 def view_previousexams_prof(request):
@@ -651,32 +672,89 @@ def save_question_paper_ajax(request):
     if request.method != 'POST' or not request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return HttpResponseBadRequest('Invalid request')
 
-    try:
-        payload = json.loads(request.body.decode('utf-8'))
-    except Exception:
-        return HttpResponseBadRequest('Invalid JSON')
+    title = ''
+    total_marks = 0
+    questions = []
 
-    title = payload.get('title', '').strip()
-    try:
-        total_marks = int(payload.get('total_marks') or 0)
-    except Exception:
-        total_marks = 0
-    questions = payload.get('questions', [])
+    if request.content_type.startswith('multipart/form-data'):
+        title = request.POST.get('title', '').strip()
+        try:
+            total_marks = int(request.POST.get('total_marks') or 0)
+        except Exception:
+            total_marks = 0
+
+        try:
+            count = int(request.POST.get('question_count') or 0)
+        except Exception:
+            count = 0
+
+        for i in range(count):
+            qtext = (request.POST.get(f'question_{i}', '') or '').strip()
+            qimage = request.FILES.get(f'question_image_{i}')
+            optA = (request.POST.get(f'optionA_{i}', '') or '').strip()
+            optA_image = request.FILES.get(f'optionA_image_{i}')
+            optB = (request.POST.get(f'optionB_{i}', '') or '').strip()
+            optB_image = request.FILES.get(f'optionB_image_{i}')
+            optC = (request.POST.get(f'optionC_{i}', '') or '').strip()
+            optC_image = request.FILES.get(f'optionC_image_{i}')
+            optD = (request.POST.get(f'optionD_{i}', '') or '').strip()
+            optD_image = request.FILES.get(f'optionD_image_{i}')
+            answer = (request.POST.get(f'answer_{i}', '') or '').strip()
+            try:
+                max_marks = int(request.POST.get(f'max_marks_{i}', 0) or 0)
+            except Exception:
+                max_marks = 0
+
+            questions.append({
+                'question': qtext,
+                'question_image': qimage,
+                'optionA': optA,
+                'optionA_image': optA_image,
+                'optionB': optB,
+                'optionB_image': optB_image,
+                'optionC': optC,
+                'optionC_image': optC_image,
+                'optionD': optD,
+                'optionD_image': optD_image,
+                'answer': answer,
+                'max_marks': max_marks
+            })
+
+    else:
+        try:
+            payload = json.loads(request.body.decode('utf-8'))
+        except Exception:
+            return HttpResponseBadRequest('Invalid JSON')
+
+        title = payload.get('title', '').strip()
+        try:
+            total_marks = int(payload.get('total_marks') or 0)
+        except Exception:
+            total_marks = 0
+        questions = payload.get('questions', [])
+
     if not title or total_marks <= 0 or not isinstance(questions, list) or len(questions) == 0:
         return JsonResponse({'success': False, 'error': 'Missing title, total marks, or questions'}, status=400)
 
     prof = request.user
     created_questions = []
     marks_sum = 0
+
     for q in questions:
         qtext = (q.get('question') or '').strip()
+        qimage = q.get('question_image')
         optA = (q.get('optionA') or '').strip()
+        optA_image = q.get('optionA_image')
         optB = (q.get('optionB') or '').strip()
+        optB_image = q.get('optionB_image')
         optC = (q.get('optionC') or '').strip()
+        optC_image = q.get('optionC_image')
         optD = (q.get('optionD') or '').strip()
+        optD_image = q.get('optionD_image')
         answer = (q.get('answer') or '').strip()
         max_marks = q.get('max_marks') or 0
-        if not qtext or not optA or not optB or not optC or not optD or answer not in ['A','B','C','D']:
+
+        if not (qtext or qimage) or not (optA or optA_image) or not (optB or optB_image) or not (optC or optC_image) or not (optD or optD_image) or answer not in ['A','B','C','D']:
             return JsonResponse({'success': False, 'error': 'Invalid question data'}, status=400)
 
         try:
@@ -688,10 +766,15 @@ def save_question_paper_ajax(request):
         question_obj = Question_DB.objects.create(
             professor=prof,
             question=qtext,
+            question_image=qimage,
             optionA=optA,
+            optionA_image=optA_image,
             optionB=optB,
+            optionB_image=optB_image,
             optionC=optC,
+            optionC_image=optC_image,
             optionD=optD,
+            optionD_image=optD_image,
             answer=answer,
             max_marks=mm
         )
@@ -822,10 +905,15 @@ def get_question_paper_api(request, id):
         questions.append({
             'id': q.qno,
             'question': q.question,
+            'question_image': q.question_image.url if q.question_image else None,
             'optionA': q.optionA,
+            'optionA_image': q.optionA_image.url if q.optionA_image else None,
             'optionB': q.optionB,
+            'optionB_image': q.optionB_image.url if q.optionB_image else None,
             'optionC': q.optionC,
+            'optionC_image': q.optionC_image.url if q.optionC_image else None,
             'optionD': q.optionD,
+            'optionD_image': q.optionD_image.url if q.optionD_image else None,
             'answer': q.answer,
             'max_marks': q.max_marks
         })
@@ -866,51 +954,102 @@ def update_question_paper_ajax(request):
     if request.method != 'POST' or not request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return JsonResponse({'error': 'Invalid request'}, status=400)
 
-    try:
-        payload = json.loads(request.body.decode('utf-8'))
-    except Exception:
-        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    # Parse payload for both JSON and multipart form-data
+    if request.content_type.startswith('multipart/form-data'):
+        qpaper_id = request.POST.get('qpaper_id')
+        title = request.POST.get('title', '').strip()
+        try:
+            total_marks = int(request.POST.get('total_marks') or 0)
+        except Exception:
+            total_marks = 0
+        try:
+            count = int(request.POST.get('question_count') or 0)
+        except Exception:
+            count = 0
 
-    qpaper_id = payload.get('qpaper_id')
+        questions = []
+        for i in range(count):
+            qtext = (request.POST.get(f'question_{i}', '') or '').strip()
+            qimage = request.FILES.get(f'question_image_{i}')
+            optA = (request.POST.get(f'optionA_{i}', '') or '').strip()
+            optA_image = request.FILES.get(f'optionA_image_{i}')
+            optB = (request.POST.get(f'optionB_{i}', '') or '').strip()
+            optB_image = request.FILES.get(f'optionB_image_{i}')
+            optC = (request.POST.get(f'optionC_{i}', '') or '').strip()
+            optC_image = request.FILES.get(f'optionC_image_{i}')
+            optD = (request.POST.get(f'optionD_{i}', '') or '').strip()
+            optD_image = request.FILES.get(f'optionD_image_{i}')
+            answer = (request.POST.get(f'answer_{i}', '') or '').strip()
+            try:
+                max_marks = int(request.POST.get(f'max_marks_{i}', 0) or 0)
+            except Exception:
+                max_marks = 0
+
+            questions.append({
+                'question': qtext,
+                'question_image': qimage,
+                'optionA': optA,
+                'optionA_image': optA_image,
+                'optionB': optB,
+                'optionB_image': optB_image,
+                'optionC': optC,
+                'optionC_image': optC_image,
+                'optionD': optD,
+                'optionD_image': optD_image,
+                'answer': answer,
+                'max_marks': max_marks
+            })
+    else:
+        try:
+            payload = json.loads(request.body.decode('utf-8'))
+        except Exception:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+        qpaper_id = payload.get('qpaper_id')
+        title = payload.get('title', '').strip()
+        try:
+            total_marks = int(payload.get('total_marks') or 0)
+        except Exception:
+            total_marks = 0
+        questions = payload.get('questions', [])
+
     if not qpaper_id:
         return JsonResponse({'error': 'Question paper ID required'}, status=400)
-    
+
     prof = request.user
     try:
         qpaper = Question_Paper.objects.get(pk=qpaper_id, professor=prof)
     except Question_Paper.DoesNotExist:
         return JsonResponse({'error': 'Question paper not found'}, status=404)
 
-    title = payload.get('title', '').strip()
-    try:
-        total_marks = int(payload.get('total_marks') or 0)
-    except Exception:
-        total_marks = 0
-    questions = payload.get('questions', [])
-    
     if not title or total_marks <= 0 or not isinstance(questions, list) or len(questions) == 0:
         return JsonResponse({'error': 'Missing title, total marks, or questions'}, status=400)
 
     # Update question paper
     qpaper.qPaperTitle = title
     qpaper.total_marks = total_marks
-    
+
     # Clear existing questions
     qpaper.questions.clear()
-    
+
     # Process questions
     created_questions = []
     marks_sum = 0
     for q in questions:
         qtext = (q.get('question') or '').strip()
+        qimage = q.get('question_image')
         optA = (q.get('optionA') or '').strip()
+        optA_image = q.get('optionA_image')
         optB = (q.get('optionB') or '').strip()
+        optB_image = q.get('optionB_image')
         optC = (q.get('optionC') or '').strip()
+        optC_image = q.get('optionC_image')
         optD = (q.get('optionD') or '').strip()
+        optD_image = q.get('optionD_image')
         answer = (q.get('answer') or '').strip()
         max_marks = q.get('max_marks') or 0
-        
-        if not qtext or not optA or not optB or not optC or not optD or answer not in ['A','B','C','D']:
+
+        if not (qtext or qimage) or not (optA or optA_image) or not (optB or optB_image) or not (optC or optC_image) or not (optD or optD_image) or answer not in ['A','B','C','D']:
             return JsonResponse({'error': 'Invalid question data'}, status=400)
 
         try:
@@ -922,10 +1061,15 @@ def update_question_paper_ajax(request):
         question_obj = Question_DB.objects.create(
             professor=prof,
             question=qtext,
+            question_image=qimage,
             optionA=optA,
+            optionA_image=optA_image,
             optionB=optB,
+            optionB_image=optB_image,
             optionC=optC,
+            optionC_image=optC_image,
             optionD=optD,
+            optionD_image=optD_image,
             answer=answer,
             max_marks=mm
         )
