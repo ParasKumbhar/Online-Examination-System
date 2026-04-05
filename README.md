@@ -20,15 +20,17 @@ The Online Examination System is a digital platform designed to simplify the exa
 # Installation Guide
 
 ## Prerequisites
-- **Python** (version 3.6 or higher)
-- **pip** (Python package manager)
-- **Pipenv** (virtual environment manager)
-- **Git** (for cloning the repository)
+- **Python** (version 3.6 or higher) - (Required)
+- **pip** (Python package manager) - (Required, usually comes with Python)
+- **Pipenv** (virtual environment manager) - (Required)
+- **Git** (for cloning the repository) - (Required if cloning from repo)
 
 ## System Requirements
 - Windows, macOS, or Linux
 - At least 500 MB free disk space
 - Internet connection for package installation
+
+**Note:** This guide assumes a fresh installation. If you already have the project cloned and set up, you may skip steps related to cloning, dependency installation, and database migrations if everything is already configured. Always run `python manage.py migrate` to ensure the database is up to date.
 
 ---
 
@@ -36,7 +38,7 @@ The Online Examination System is a digital platform designed to simplify the exa
 
 ### **Phase 1: Project Setup**
 
-#### Step 1: Download or Clone the Repository
+#### Step 1: Download or Clone the Repository (Required if not already done)
 Open CMD/Terminal and run:
 ```
 bash
@@ -46,7 +48,7 @@ cd Online-Examination-System-New
 
 ---
 
-#### Step 2: Verify Python Installation
+#### Step 2: Verify Python Installation (Required)
 Open CMD and run:
 ```
 bash
@@ -58,7 +60,7 @@ If Python is not installed, download it from [python.org](https://www.python.org
 
 ---
 
-#### Step 3: Verify PIP Installation
+#### Step 3: Verify PIP Installation (Required)
 Open CMD and run:
 ```
 bash
@@ -76,7 +78,7 @@ Expected output: `pip x.x.x from ...`
 
 ---
 
-#### Step 4: Install Pipenv
+#### Step 4: Install Pipenv (Required)
 Open CMD and run:
 ```
 bash
@@ -85,7 +87,7 @@ pip install pipenv
 
 ---
 
-#### Step 5: Verify Pipenv Installation
+#### Step 5: Verify Pipenv Installation (Required)
 Open CMD and run:
 ```
 bash
@@ -96,7 +98,7 @@ Expected output: `pipenv, version x.x.x`
 
 ---
 
-#### Step 6: Set Up Python Scripts in Environment Variables (Windows Only)
+#### Step 6: Set Up Python Scripts in Environment Variables (Windows Only) (Optional - may not be needed if Pipenv works without it)
 
 **Step 6.1:** Identify your Python Scripts path by running:
 ```
@@ -116,7 +118,7 @@ python -m site --user-site
 
 ### **Phase 2: Virtual Environment & Dependencies**
 
-#### Step 7: Create Virtual Environment
+#### Step 7: Create Virtual Environment (Required)
 Open VS Code Terminal and run:
 ```
 bash
@@ -127,7 +129,7 @@ This creates a virtual environment and installs dependencies from `Pipfile`.
 
 ---
 
-#### Step 8: Activate Pipenv Shell
+#### Step 8: Activate Pipenv Shell (Required)
 Open VS Code Terminal and run:
 ```
 bash
@@ -138,7 +140,7 @@ pipenv shell
 
 ---
 
-#### Step 9: Install Project Requirements
+#### Step 9: Install Project Requirements (Optional - Pipenv install should cover this, but run if needed)
 In VS Code Terminal (with pipenv shell activated), run:
 ```
 bash
@@ -151,7 +153,7 @@ This installs all necessary packages including Django, database drivers, and oth
 
 ### **Phase 3: Environment Configuration**
 
-#### Step 10: Configure Email Settings
+#### Step 10: Configure Email Settings (Required for email functionality)
 Create a file named `.env` in the project root folder (same directory as `manage.py`).
 
 **For Windows**, add the following content:
@@ -162,11 +164,11 @@ DEBUG=False
 SECRET_KEY=django-insecure-your-generated-secret-key-here-change-in-production
 ALLOWED_HOSTS=localhost,127.0.0.1
 
-# Database Configuration (SQLite for development)
+# Database Configuration (SQLite for development - not used in current settings.py)
 DATABASE_ENGINE=django.db.backends.sqlite3
 DATABASE_NAME=db.sqlite3
 
-# Email Configuration (Gmail SMTP - from env.bat)
+# Email Configuration (Gmail SMTP - required for notifications)
 EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
 EMAIL_HOST=smtp.gmail.com
 EMAIL_HOST_USER=your_email@example.com
@@ -203,7 +205,7 @@ export DEFAULT_FROM_EMAIL=your_email@example.com
 
 ---
 
-#### Step 11: Load Environment Variables
+#### Step 11: Load Environment Variables (Automatic with python-dotenv - no action needed)
 In VS Code Terminal, run:
 
 **For Windows:**
@@ -227,7 +229,7 @@ source env.sh
 
 ---
 
-#### Step 12: Navigate to Project Directory
+#### Step 12: Navigate to Project Directory (Required)
 In VS Code Terminal, run:
 ```
 bash
@@ -238,7 +240,7 @@ cd Exam
 
 ### **Phase 4: Database Setup**
 
-#### Step 13: Run Initial Migrations
+#### Step 13: Run Initial Migrations (Required)
 In VS Code Terminal, run:
 ```
 bash
@@ -249,7 +251,7 @@ This applies all database migrations and creates the necessary tables.
 
 ---
 
-#### Step 14: Create New Migrations (if needed)
+#### Step 14: Create New Migrations (Optional - only if models have been changed)
 If you've made changes to models, generate new migrations:
 ```
 bash
@@ -258,7 +260,7 @@ python manage.py makemigrations
 
 ---
 
-#### Step 15: Apply Migrations Again
+#### Step 15: Apply Migrations Again (Required after Step 14 if done)
 After creating new migrations, apply them:
 ```
 bash
@@ -267,7 +269,7 @@ python manage.py migrate
 
 ---
 
-#### Step 16: Collect Static Files (For Production)
+#### Step 16: Collect Static Files (Optional - for production deployment)
 For production deployment, collect static files:
 ```
 bash
@@ -278,7 +280,7 @@ python manage.py collectstatic --noinput
 
 ### **Phase 5: User & Group Setup**
 
-#### Step 17: Create Superuser Account
+#### Step 17: Create Superuser Account (Required)
 In VS Code Terminal, run:
 ```
 bash
@@ -292,7 +294,7 @@ You'll be prompted to enter:
 
 ---
 
-#### Step 18: Run the Development Server
+#### Step 18: Run the Development Server (Required to start the application)
 In VS Code Terminal, run:
 ```
 bash
@@ -306,9 +308,9 @@ Starting development server at http://127.0.0.1:8000/
 
 ---
 
-### **Phase 6: Post-Deployment Configuration**
+### **Phase 6: Post-Deployment Configuration (Required for full functionality)**
 
-#### Step 19: Access the Application
+#### Step 19: Access the Application (Required)
 Open a web browser and navigate to:
 - **Homepage**: `http://127.0.0.1:8000/`
 - **Admin Panel**: `http://127.0.0.1:8000/admin/`
@@ -317,86 +319,153 @@ Log in with your superuser credentials.
 
 ---
 
-#### Step 20: Create User Groups
+#### Step 20: Create User Groups (Optional - groups are auto-created on migration)
 1. Go to **Admin Panel** → `http://127.0.0.1:8000/admin/`
 2. Navigate to **Authentication and Authorization** → **Groups**
 3. Click **Add Group** button
 4. Create **Group 1**:
    - **Name**: Professor
-   - **Keywords to Search for Permission**:
-     - `Contenttypes`
-     - `Faculty`
-     - `Questions`
-   - **Permissions**: 
-     - `contenttypes | content type | Can add content type`
-     - `contenttypes | content type | Can change content type`
-     - `contenttypes | content type | Can delete content type`
-     - `contenttypes | content type | Can view content type`
-     - `faculty | faculty info | Can add faculty info`
-     - `faculty | faculty info | Can change faculty info`
-     - `faculty |faculty info | Can delete faculty info`
-     - `faculty |faculty info | Can view faculty info`
-     - `questions | exam_model | Can add exam_model`
-     - `questions | exam_model | Can change exam_model`
-     - `questions |exam_model | Can delete exam_model`
-     - `questions |exam_model | Can view exam_model`
+   - **Permissions** (search and select all):
      - `questions | question_db | Can add question_db`
      - `questions | question_db | Can change question_db`
      - `questions | question_db | Can delete question_db`
      - `questions | question_db | Can view question_db`
-     - `questions | question paper | Can add question paper`
+     - `questions | question_paper | Can add question_paper`
      - `questions | question_paper | Can change question_paper`
-     - `questions | question paper | Can delete question_paper`
-     - `questions | question_paper | Can view question paper`
-     - `questions | question category | Can add question category`
-     - `questions | question category | Can change question category`
-     - `questions | question category | Can delete question category`
-     - `questions | question category | Can view question category`
-     - `questions | question statistics | Can add question statistics`
-     - `questions | question statistics | Can change question statistics`
-     - `questions | question statistics | Can delete question statistics`
-     - `questions | question statistics | Can view question statistics`
-     - `questions | question tag | Can add question tag`
-     - `questions | question tag | Can change question tag`
-     - `questions | question tag | Can delete question tag`
-     - `questions | question tag | Can view question tag`
-     - `questions | question version | Can add question version`
-     - `questions | question version | Can change question version`
-     - `questions | question version | Can delete question version`
-     - `questions | question version | Can view question version`
+     - `questions | question_paper | Can delete question_paper`
+     - `questions | question_paper | Can view question_paper`
+     - `questions | exam_model | Can add exam_model`
+     - `questions | exam_model | Can change exam_model`
+     - `questions | exam_model | Can delete exam_model`
+     - `questions | exam_model | Can view exam_model`
+     - `questions | questioncategory | Can add questioncategory`
+     - `questions | questioncategory | Can change questioncategory`
+     - `questions | questioncategory | Can delete questioncategory`
+     - `questions | questioncategory | Can view questioncategory`
+     - `questions | questiontag | Can add questiontag`
+     - `questions | questiontag | Can change questiontag`
+     - `questions | questiontag | Can delete questiontag`
+     - `questions | questiontag | Can view questiontag`
+     - `questions | questionversion | Can add questionversion`
+     - `questions | questionversion | Can change questionversion`
+     - `questions | questionversion | Can delete questionversion`
+     - `questions | questionversion | Can view questionversion`
+     - `questions | questionstatistics | Can add questionstatistics`
+     - `questions | questionstatistics | Can change questionstatistics`
+     - `questions | questionstatistics | Can delete questionstatistics`
+     - `questions | questionstatistics | Can view questionstatistics`
+     - `questions | examassignment | Can add examassignment`
+     - `questions | examassignment | Can change examassignment`
+     - `questions | examassignment | Can delete examassignment`
+     - `questions | examassignment | Can view examassignment`
+     - `questions | examfocuslog | Can add examfocuslog`
+     - `questions | examfocuslog | Can change examfocuslog`
+     - `questions | examfocuslog | Can delete examfocuslog`
+     - `questions | examfocuslog | Can view examfocuslog`
+     - `questions | examsecurityalert | Can add examsecurityalert`
+     - `questions | examsecurityalert | Can change examsecurityalert`
+     - `questions | examsecurityalert | Can delete examsecurityalert`
+     - `questions | examsecurityalert | Can view examsecurityalert`
+     - `questions | examsession | Can add examsession`
+     - `questions | examsession | Can change examsession`
+     - `questions | examsession | Can delete examsession`
+     - `questions | examsession | Can view examsession`
+     - `questions | focuslossevent | Can add focuslossevent`
+     - `questions | focuslossevent | Can change focuslossevent`
+     - `questions | focuslossevent | Can delete focuslossevent`
+     - `questions | focuslossevent | Can view focuslossevent`
+     - `faculty | facultyinfo | Can add facultyinfo`
+     - `faculty | facultyinfo | Can change facultyinfo`
+     - `faculty | facultyinfo | Can delete facultyinfo`
+     - `faculty | facultyinfo | Can view facultyinfo`
+     - `course | course | Can add course`
+     - `course | course | Can change course`
+     - `course | course | Can delete course`
+     - `course | course | Can view course`
+     - `course | session | Can add session`
+     - `course | session | Can change session`
+     - `course | session | Can delete session`
+     - `course | session | Can view session`
+     - `course | courseregistration | Can add courseregistration`
+     - `course | courseregistration | Can change courseregistration`
+     - `course | courseregistration | Can delete courseregistration`
+     - `course | courseregistration | Can view courseregistration`
+     - `course | grade | Can add grade`
+     - `course | grade | Can change grade`
+     - `course | grade | Can delete grade`
+     - `course | grade | Can view grade`
+     - `course | studentacceptance | Can add studentacceptance`
+     - `course | studentacceptance | Can change studentacceptance`
+     - `course | studentacceptance | Can delete studentacceptance`
+     - `course | studentacceptance | Can view studentacceptance`
+     - `resultprocessing | configmarks | Can add configmarks`
+     - `resultprocessing | configmarks | Can change configmarks`
+     - `resultprocessing | configmarks | Can delete configmarks`
+     - `resultprocessing | configmarks | Can view configmarks`
+     - `resultprocessing | score | Can view score`
+     - `resultprocessing | student | Can view student`
+     - `resultprocessing | program | Can view program`
+     - `notifications | notification | Can view notification`
+     - `notifications | notificationpreference | Can view notificationpreference`
    - Click **Save**
 
 5. Create **Group 2**:
-   - **Name**: Students
-   - **Keywords to Search for Permission**:
-     - `Student (It Should Start with Student)`
-     - `Studentpreferences`
-   - **Permissions**:
+   - **Name**: Student
+   - **Permissions** (search and select all):
+     - `student | studentinfo | Can add studentinfo`
+     - `student | studentinfo | Can change studentinfo`
+     - `student | studentinfo | Can delete studentinfo`
+     - `student | studentinfo | Can view studentinfo`
      - `student | stu_question | Can add stu_question`
      - `student | stu_question | Can change stu_question`
-     - `student | stu_question | Can delete stu_ question`
-     - `student | stu_question | Can view stu_ question`
-     - `student | student info | Can add student info`
-     - `student | student info | Can change student info`
-     - `student | student info | Can delete student info`
-     - `student | student info | Can view student info`
-     - `student | stu exam_db | Can add stu exam_db`
-     - `student | stu exam_db | Can change stu exam_db`
-     - `student | stu exam_db | Can delete stu exam_db`
-     - `student | stu exam_db | Can view stu exam_db`
-     - `student | stu results_db | Can add stu results_db`
-     - `student | stu results_db | Can change stu results_db`
-     - `student | stu results_db | Can delete stu results_db`
-     - `student | stu results_db | Can view stu results_db`
-     - `studentPreferences | student preference model | Can add student preference model`
-     - `studentPreferences | student preference model | Can change student preference model`
-     - `studentPreferences | student preference model | Can delete student preference model`
-     - `studentPreferences | student preference model | Can view student preference model`
+     - `student | stu_question | Can delete stu_question`
+     - `student | stu_question | Can view stu_question`
+     - `student | stuexam_db | Can add stuexam_db`
+     - `student | stuexam_db | Can change stuexam_db`
+     - `student | stuexam_db | Can delete stuexam_db`
+     - `student | stuexam_db | Can view stuexam_db`
+     - `student | sturesults_db | Can add sturesults_db`
+     - `student | sturesults_db | Can change sturesults_db`
+     - `student | sturesults_db | Can delete sturesults_db`
+     - `student | sturesults_db | Can view sturesults_db`
+     - `student | focusevent | Can add focusevent`
+     - `student | focusevent | Can change focusevent`
+     - `student | focusevent | Can delete focusevent`
+     - `student | focusevent | Can view focusevent`
+     - `questions | question_db | Can view question_db`
+     - `questions | question_paper | Can view question_paper`
+     - `questions | exam_model | Can view exam_model`
+     - `questions | questioncategory | Can view questioncategory`
+     - `questions | questiontag | Can view questiontag`
+     - `questions | questionversion | Can view questionversion`
+     - `questions | questionstatistics | Can view questionstatistics`
+     - `questions | examassignment | Can view examassignment`
+     - `questions | examsession | Can view examsession`
+     - `course | course | Can view course`
+     - `course | session | Can view session`
+     - `course | courseregistration | Can view courseregistration`
+     - `course | grade | Can view grade`
+     - `course | studentacceptance | Can view studentacceptance`
+     - `resultprocessing | score | Can view score`
+     - `studentPreferences | studentpreferencemodel | Can add studentpreferencemodel`
+     - `studentPreferences | studentpreferencemodel | Can change studentpreferencemodel`
+     - `studentPreferences | studentpreferencemodel | Can delete studentpreferencemodel`
+     - `studentPreferences | studentpreferencemodel | Can view studentpreferencemodel`
+     - `notifications | notificationpreference | Can add notificationpreference`
+     - `notifications | notificationpreference | Can change notificationpreference`
+     - `notifications | notificationpreference | Can view notificationpreference`
+     - `notifications | notification | Can view notification`
+     - `tuition | studentwallet | Can add studentwallet`
+     - `tuition | studentwallet | Can change studentwallet`
+     - `tuition | studentwallet | Can view studentwallet`
+     - `tuition | librarybook | Can view librarybook`
+     - `tuition | studentinvolvement | Can view studentinvolvement`
+     - `tuition | resultapproval | Can view resultapproval`
    - Click **Save**
 
 ---
 
-#### Step 21: Manage User Groups
+#### Step 21: Manage User Groups (Required)
 1. Go to **Admin Panel** → **Users**
 2. Select a user to edit
 3. In the **Groups** section, select the appropriate group:
@@ -406,13 +475,13 @@ Log in with your superuser credentials.
 
 ---
 
-#### Step 22: Verify Email Configuration (Optional)
+#### Step 22: Verify Email Configuration (Optional - for testing email functionality)
 To test if email is working:
 1. Go to **Admin Panel**
 2. Perform an action that triggers an email (e.g., student focus loss alert)
 3. Check if the email is received
 
-If emails are not being sent, verify your `env.bat` file settings and ensure you've enabled "Less secure apps" in your Gmail settings (if using Gmail).
+If emails are not being sent, verify your `.env` file settings and ensure you've enabled "Less secure apps" in your Gmail settings (if using Gmail).
 
 ---
 
@@ -444,7 +513,7 @@ python manage.py collectstatic --noinput
 
 ### Issue: Email not being sent
 **Solution**: 
-- Verify `env.bat` variables are correct
+- Verify `.env` variables are correct
 - For Gmail, enable "Less secure apps" in account settings
 - Check email logs in Django admin
 
@@ -457,15 +526,25 @@ Online-Examination-System/
 │   ├── manage.py                  # Django management script
 │   ├── db.sqlite3                 # SQLite database
 │   ├── admission/                 # Admission management app
+│   ├── api/                       # API endpoints app
+│   ├── core/                      # Core functionality and middleware
 │   ├── course/                    # Course management app
 │   ├── faculty/                   # Faculty management app
-│   ├── student/                   # Student management app
+│   ├── notifications/             # Notification system
 │   ├── questions/                 # Question paper management app
 │   ├── resultprocessing/          # Result processing app
-│   ├── notifications/             # Notification system
+│   ├── student/                   # Student management app
+│   ├── studentPreferences/        # Student preferences app
+│   ├── tuition/                   # Tuition and financial management app
 │   ├── examProject/               # Django configuration
+│   │   ├── static/                # Static files for examProject
 │   ├── templates/                 # HTML templates
-│   └── static/                    # Static files (CSS, JS)
+│   ├── static/                    # Static files (CSS, JS, images)
+│   ├── logs/                      # Application log files
+│   ├── management/                # Custom management commands
+│   ├── scripts/                   # Utility scripts
+│   ├── final_status_report.py     # Final status report script
+│   └── verify_groups.py           # Group verification script
 ├── requirements.txt               # Python dependencies
 ├── Pipfile                        # Pipenv dependencies
 └── README.md                      # This file
