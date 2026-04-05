@@ -439,6 +439,56 @@ Online Examination System Security Team
             }
     
     @staticmethod
+    def require_2fa_verification(user, ip_address='', user_agent='', device_fingerprint=''):
+        """
+        Trigger a 2FA verification flow for an authenticated user.
+        Creates an OTP session and sends the OTP email.
+        """
+        if not user or not getattr(user, 'is_authenticated', False):
+            security_logger.warning('2FA requirement requested for unauthenticated user')
+            return {
+                'success': False,
+                'message': 'User must be authenticated to require 2FA verification',
+            }
+        
+        if not getattr(settings, 'TWO_FACTOR_ENABLED', True):
+            security_logger.info(f'2FA is disabled in settings for user {user}')
+            return {
+                'success': False,
+                'message': 'Two-factor authentication is disabled',
+            }
+        
+        if not user.email:
+            security_logger.warning(f'2FA requirement failed: no email for user {user}')
+            return {
+                'success': False,
+                'message': 'User does not have an email configured for OTP delivery',
+            }
+        
+        session_result = TwoFactorAuth.create_otp_session(
+            user_email=user.email,
+            user=user,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            device_fingerprint=device_fingerprint,
+        )
+        if not session_result.get('success'):
+            return session_result
+        
+        email_result = TwoFactorAuth.send_email_otp(
+            session_id=session_result['session_id'],
+            user_email=user.email,
+            user_name=user.get_full_name() or user.username,
+        )
+        
+        return {
+            'success': email_result.get('success', False),
+            'message': email_result.get('message', 'Failed to send 2FA OTP email'),
+            'session_id': session_result.get('session_id'),
+            'email_result': email_result,
+        }
+    
+    @staticmethod
     def resend_otp(session_id, user_email):
         """
         Resend OTP for existing session, invalidating previous OTP.
